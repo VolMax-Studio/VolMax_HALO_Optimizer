@@ -1,0 +1,7 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local data and output
+data/
+verified_results.json
