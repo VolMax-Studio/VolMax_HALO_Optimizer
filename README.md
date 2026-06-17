@@ -5,8 +5,9 @@ INT4-quantized network, measured head-to-head against LoRA. The adaptation runs 
 forward — no backward pass, no autograd graph — so its per-step memory is **constant in
 network depth**, where LoRA's grows linearly.
 
-This is an **honest proof-of-concept on MLPs (digits, MNIST)**, not a large-model result.
-See *Scope & limitations* before reading anything else into it.
+This is an **honest proof-of-concept on feedforward nets (digits, MNIST)**, with a documented
+hard boundary: the method does not extend to attention (tested below). It is not a large-model
+result. See *Where it breaks* and *Scope & limitations* before reading anything else into it.
 
 ---
 
@@ -66,11 +67,44 @@ The memory advantage is measured as peak adapt-step bytes (LoRA retains one acti
 per layer for the backward graph — O(L); HALO holds one layer's worth at a time — O(1)). At
 L=8 this is ~4–5×; it scales with depth, so a deeper stack widens the gap further.
 
+## Where it breaks: attention (tested, not assumed)
+
+The method works on feedforward layers. It does **not** carry to attention. This was tested
+directly, not assumed — and the negative result is documented here on purpose, because knowing
+where a method stops mattering is part of the method.
+
+Task: single-head-solvable associative recall (key→value retrieval), the canonical job of
+attention. Adapt only the Q/K/V projections of a frozen INT4 attention block:
+
+| method | test accuracy |
+|---|---|
+| LoRA on Q/K/V (backprop) | **0.970** |
+| no adaptation | 0.177 |
+| HALO-DFA | 0.116 |
+| HALO+FOTON | 0.147 |
+| HALO+FOTON+Precond | 0.153 |
+| random baseline | 0.125 |
+
+All forward-only variants collapse to chance. Localization (adapting only the *linear* output
+projection W_o, Q/K/V frozen) reaches just 0.199 — confirming the failure is not a tuning issue.
+
+**Why:** DFA cannot assign credit through the softmax. In an MLP the input→output map of each
+layer is linear before the nonlinearity, so a random-projected error times the local activation
+is a usable update. In attention, Q and K act on the output *through the attention distribution*
+— deeply nonlinear, across the whole sequence. Associative recall needs a precise query-key
+match, which is exactly the signal backprop carries through the softmax gradient and DFA's random
+projection does not. This is consistent with the known weakness of feedback-alignment methods on
+attention; it is an open research problem, not a bug in this code.
+
+`attn_halo_gate.py` reproduces this table; `attn_sanity.py` shows the same testbed reaches 100%
+under full backprop (so the testbed is healthy — the gap is the method, not the task).
+
 ## Scope & limitations (read this)
 
-- **MLPs only.** Results are on fully-connected nets over digits and MNIST. This is **not** a
-  transformer or LLM result. The next honest step toward any large-model claim is adapting a
-  single real transformer layer.
+- **Feedforward layers only.** Results are on fully-connected nets over digits and MNIST, and
+  the attention test above shows the method does **not** extend to transformer Q/K/V. This is
+  **not** a transformer or LLM result. Forward-only attention credit assignment is an open
+  research direction, not something this repo claims to solve.
 - **MNIST at ~0.86–0.90 is MLP-ceiling, not SOTA** — CNNs reach 0.99. LoRA's ~0.89 here is the
   fair backprop ceiling *for this architecture*, the right comparison point, not an absolute.
 - **LoRA still wins on accuracy** at equal rank. The pitch is memory, not accuracy: forward-only
