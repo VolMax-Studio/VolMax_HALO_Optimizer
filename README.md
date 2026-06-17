@@ -36,9 +36,9 @@ collapses to chance in depth (digits):
 
 | Depth L | plain DFA (no ortho) | with FOTON |
 |--------:|---------------------:|-----------:|
-| 4  | 0.191 (≈ chance) | 0.791 |
-| 8  | 0.193 (≈ chance) | 0.741 |
-| 16 | 0.193 (≈ chance) | 0.693 |
+| 4  | 0.185 (≈ chance) | 0.791 |
+| 8  | 0.185 (≈ chance) | 0.741 |
+| 16 | 0.189 (≈ chance) | 0.689 |
 
 **It generalizes from digits (1.8k samples) to MNIST (60k)** — the ablation ordering holds:
 
@@ -47,9 +47,9 @@ collapses to chance in depth (digits):
 | Depth L | no-adapt | LoRA | HALO+FOTON | +Precond |
 |--------:|---------:|-----:|-----------:|---------:|
 | 1  | 0.146 | 0.892 | 0.859 | 0.857 |
-| 4  | 0.086 | 0.894 | 0.778 | 0.794 |
-| 8  | 0.102 | 0.895 | 0.751 | 0.763 |
-| 16 | 0.094 | 0.898 | 0.681 | 0.762 |
+| 4  | 0.086 | 0.894 | 0.779 | 0.794 |
+| 8  | 0.102 | 0.895 | 0.758 | 0.763 |
+| 16 | 0.094 | 0.898 | 0.670 | 0.762 |
 
 **The gap to LoRA is capacity-bound, not inherent** — it closes monotonically with adapter
 rank, with diminishing returns, while the memory advantage *grows* (MNIST, L=8):
@@ -60,8 +60,8 @@ rank, with diminishing returns, while the memory advantage *grows* (MNIST, L=8):
 |-------:|-----:|-----:|----:|-----------------:|
 | 8  | 0.895 | 0.763 | 0.132 | 4.17× |
 | 16 | 0.900 | 0.817 | 0.083 | 4.31× |
-| 32 | 0.896 | 0.856 | 0.040 | 4.52× |
-| 64 | 0.897 | 0.859 | 0.038 | 4.74× |
+| 32 | 0.896 | 0.853 | 0.043 | 4.52× |
+| 64 | 0.897 | 0.860 | 0.037 | 4.74× |
 
 The memory advantage is measured as peak adapt-step bytes (LoRA retains one activation tensor
 per layer for the backward graph — O(L); HALO holds one layer's worth at a time — O(1)). At
@@ -78,9 +78,9 @@ attention. Adapt only the Q/K/V projections of a frozen INT4 attention block:
 
 | method | test accuracy |
 |---|---|
-| LoRA on Q/K/V (backprop) | **0.970** |
+| LoRA on Q/K/V (backprop) | **0.997** |
 | no adaptation | 0.177 |
-| HALO-DFA | 0.116 |
+| HALO-DFA (no ortho) | 0.126 |
 | HALO+FOTON | 0.147 |
 | HALO+FOTON+Precond | 0.153 |
 | random baseline | 0.125 |
