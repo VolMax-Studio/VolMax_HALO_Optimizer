@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Nestorov
+    given-names: Ivan
+    affiliation: "VolMax Studio Lab d.o.o."
+    orcid: "https://orcid.org/0009-0006-7940-9539"
+title: "Forward-Only Local Adaptation of Frozen INT4 Networks: O(1)-in-Depth Memory, with a Tested Feedforward/Attention Boundary"
+version: 1.0.0
+date-released: 2026-06-17
+url: "https://github.com/VolMax-Studio/VolMax_HALO_Optimizer"
