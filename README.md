@@ -116,15 +116,39 @@ under full backprop (so the testbed is healthy — the gap is the method, not th
   kept in higher precision; the *base* is INT4. (See commit history / `lowprec_sr.py`.)
 - Trained on a 10k MNIST subset for runtime; full 60k would shift numbers marginally.
 
+## Real-World BMS SOH Adaptation Benchmark (v2.0)
+
+We extend HALO to a real-world energy-ML regression task: **on-device State-of-Health (SOH / cycle-life) adaptation** on the out-of-distribution (OOD) Severson Batch 3 cohort. The base network is trained offline on Batch 1 & 2 cells; we measure the effectiveness of adapting the network to new cell cohorts using very few on-device samples ($N_{\text{adapt}} \in [5, 10, 15, 20]$ cells).
+
+We perform a statistically rigorous evaluation across **20 random seeds (0–19)** with strictly paired splits, base models, and cohorts. Optimal parameters are selected using deployable cross-validation (LOO-CV for $N_{\text{adapt}}=5$, 5-fold CV for $N_{\text{adapt}} > 5$) without test-set peeking.
+
+### Key Results (cycles MAPE, Rank 16, $N_{\text{adapt}} = 20$)
+
+| Metric | Value |
+|:---|:---|
+| **Base (No Adapt) MAPE** | $20.14 \pm 3.15\%$ |
+| **LoRA (Backprop) MAPE** | $14.60 \pm 2.43\%$ |
+| **HALO CV (Forward-Only) MAPE** | $19.00 \pm 4.81\%$ |
+| **HALO Oracle MAPE** | $15.19 \pm 2.18\%$ |
+| **Wilcoxon p-value** | $0.0010$ |
+| **Paired 95% Percentile Bootstrap CI (HALO - LoRA)** | **$[+2.27\%, +6.76\%]$** |
+
+### Core Findings & Limitations:
+1. **The Hyperparameter Tuning Bottleneck**: Under honest, deployable cross-validation (HALO CV), the performance gap between HALO and LoRA is positive and statistically significant (95% CI $[+2.27\%, +6.76\%]$, $p=0.0010$). HALO CV suffers from high parameter sensitivity and variance (std of $4.81\%$).
+2. **Oracle vs. LoRA**: Even when choosing the optimal hyperparameters directly on the evaluation set (HALO Oracle), the accuracy gap only narrows to **$\approx 0\text{--}2\text{ pp}$** relative to LoRA, indicating that the forward-only update rule operates close to but slightly below the backpropagation ceiling.
+3. **Data Scaling Curve**: As $N_{\text{adapt}}$ scales from 5 to 20, HALO CV's MAPE drops from $24.26\%$ to $19.00\%$ (Rank 16), showing that validation reliability improves with more calibration points, but still fails to outperform LoRA's robust performance.
+
+All SOH adaptation code is fully reproducible via `rigorous_halo_bess_adaptation.py` and output metrics are saved in `verified_results.json`.
+
 ## Reproduce
 
 ```bash
-pip install torch numpy scikit-learn matplotlib
-python reproduce.py        # regenerates every number above in one run
+pip install torch numpy scikit-learn matplotlib scipy
+python reproduce.py                     # MNIST & digits classification
+python rigorous_halo_bess_adaptation.py # BESS SOH adaptation
 ```
 
-`reproduce.py` downloads MNIST from a GitHub mirror and runs all three experiments
-(FOTON necessity, MNIST depth ablation, rank capacity) from a single seed with no shared state.
+`reproduce.py` downloads MNIST from a GitHub mirror and runs all three experiments (FOTON necessity, MNIST depth ablation, rank capacity) from a single seed with no shared state.
 
 ## References
 
