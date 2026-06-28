@@ -7,5 +7,6 @@ authors:
     orcid: "https://orcid.org/0009-0006-7940-9539"
 title: "Forward-Only Local Adaptation of Frozen INT4 Networks: O(1)-in-Depth Memory, with Real-World BMS SOH Adaptation Benchmarks"
 version: 2.0.0
+doi: "10.5281/zenodo.21010289"
 date-released: 2026-06-28
 url: "https://github.com/VolMax-Studio/VolMax_HALO_Optimizer"

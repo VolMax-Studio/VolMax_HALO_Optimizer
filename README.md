@@ -1,5 +1,8 @@
 # Forward-Only Local Adaptation of a Frozen INT4 Base — O(1)-in-Depth Memory
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21010289.svg)](https://doi.org/10.5281/zenodo.21010289)
+
+
 A reproducible benchmark of **gradient-free, backprop-free local adaptation** of a frozen
 INT4-quantized network, measured head-to-head against LoRA. The adaptation runs entirely
 forward — no backward pass, no autograd graph — so its per-step memory is **constant in
