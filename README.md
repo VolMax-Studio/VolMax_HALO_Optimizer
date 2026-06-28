@@ -118,7 +118,7 @@ under full backprop (so the testbed is healthy — the gap is the method, not th
 
 ## Real-World BMS SOH Adaptation Benchmark (v2.0)
 
-We extend HALO to a real-world energy-ML regression task: **on-device State-of-Health (SOH / cycle-life) adaptation** across two distinct battery chemistries and datasets:
+We extend HALO to a real-world energy-ML regression task: **on-device State-of-Health (SOH / cycle-life) adaptation** across two battery datasets under memory-constrained regimes:
 1. **Severson LFP (Cycle-Life)**: Out-of-distribution (OOD) adaptation on the Severson Batch 3 cohort ($N_{\text{adapt}} \in [5, 10, 15, 20]$ cells).
 2. **KIT NMC (SOH / Instance Split)**: Instance-split OOD adaptation on Instance 3 cells (Instance 1 & 2 Train) under Option C ($N_{\text{adapt}} \in [5, 10, 15, 20]$ cells).
 
@@ -127,20 +127,20 @@ We perform a statistically rigorous evaluation across **20 random seeds (0–19)
 ### Headline Results (Rank 16, $N_{\text{adapt}} = 20$)
 
 #### 1. Severson LFP Dataset (Cycle-Life)
-| Method / Metric | MAPE (%) | RMSE (cycles) | $R^2$ | Wilcoxon $p$-val | Bootstrap 95% CI |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **Base (No Adapt)** | $20.14 \pm 3.15$ | $301.8 \pm 59.7$ | $-0.50 \pm 0.53$ | — | — |
-| **LoRA (Backprop)** | **$14.60 \pm 2.43$** | **$206.0 \pm 36.4$** | **$0.27 \pm 0.37$** | — | — |
-| **HALO CV (Forward)** | $19.00 \pm 4.81$ | $268.6 \pm 64.4$ | $-0.39 \pm 0.95$ | $0.0010$ | $[+2.45\%, +6.56\%]$ |
-| **HALO Oracle (Best)** | $15.19 \pm 2.18$ | $217.0 \pm 46.6$ | $0.16 \pm 0.50$ | — | — |
+| Method / Metric | MAPE (Mean ± Std) | MAPE (Median) | RMSE (cycles) | $R^2$ (Mean ± Std) | $R^2$ (Median) | Wilcoxon $p$-val | Bootstrap 95% CI |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Base (No Adapt)** | $20.14 \pm 3.15\%$ | $19.77\%$ | $301.8 \pm 59.7$ | $-0.50 \pm 0.53$ | $-0.39$ | — | — |
+| **LoRA (Backprop)** | **$14.60 \pm 2.43\%$** | **$13.78\%$** | **$206.0 \pm 36.4$** | **$0.27 \pm 0.37$** | **$0.38$** | — | — |
+| **HALO CV (Forward)** | $19.00 \pm 4.81\%$ | $18.65\%$ | $268.6 \pm 64.4$ | $-0.39 \pm 0.95$ | $-0.10$ | $0.0010$ | $[+2.45\%, +6.56\%]$ |
+| **HALO Oracle (Best)** | $15.19 \pm 2.18\%$ | $15.24\%$ | $217.0 \pm 46.6$ | $0.16 \pm 0.50$ | $0.27$ | — | — |
 
 #### 2. KIT NMC Dataset (SOH / Option C)
-| Method / Metric | MAPE (%) | RMSE (cycles) | $R^2$ | Wilcoxon $p$-val | Bootstrap 95% CI |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **Base (No Adapt)** | $41.86 \pm 8.94$ | $23.9 \pm 3.7$ | $0.55 \pm 0.10$ | — | — |
-| **LoRA (Backprop)** | **$36.17 \pm 8.50$** | **$23.2 \pm 6.2$** | **$0.54 \pm 0.26$** | — | — |
-| **HALO CV (Forward)** | $59.90 \pm 25.31$ | $40.4 \pm 37.9$ | $-1.87 \pm 8.79$ | $< 10^{-5}$ | $[+14.42\%, +36.80\%]$ |
-| **HALO Oracle (Best)** | $43.79 \pm 7.73$ | $25.7 \pm 5.4$ | $0.46 \pm 0.23$ | — | — |
+| Method / Metric | MAPE (Mean ± Std) | MAPE (Median) | RMSE (cycles) | $R^2$ (Mean ± Std) | $R^2$ (Median) | Wilcoxon $p$-val | Bootstrap 95% CI |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Base (No Adapt)** | $41.86 \pm 8.94\%$ | $39.91\%$ | $23.9 \pm 3.7$ | $0.55 \pm 0.10$ | $0.55$ | — | — |
+| **LoRA (Backprop)** | **$36.17 \pm 8.50\%$** | **$35.30\%$** | **$23.2 \pm 6.2$** | **$0.54 \pm 0.26$** | **$0.63$** | — | — |
+| **HALO CV (Forward)** | $59.90 \pm 25.31\%$ | $53.71\%$ | $40.4 \pm 37.9$ | $-1.87 \pm 8.79$ | $0.30$ | $< 10^{-5}$ | $[+14.42\%, +36.80\%]$ |
+| **HALO Oracle (Best)** | $43.79 \pm 7.73\%$ | $42.24\%$ | $25.7 \pm 5.4$ | $0.46 \pm 0.23$ | $0.54$ | — | — |
 
 *Bootstrap CI reports the 95% percentile interval on the paired difference `(HALO CV - LoRA)`.*
 
@@ -148,10 +148,20 @@ We perform a statistically rigorous evaluation across **20 random seeds (0–19)
 
 ### Core Findings & Boundary Characterization
 
-1. **A Clear Capacity / Rigor Boundary**: On-device adaptation is stable only insofar as the degradation regime is mild. 
-   - On **Severson LFP** (milder, smoother degradation), forward-only DFA adaptation (HALO CV) acts neutrally: it matches no-adapt performance ($19.00\%$ vs $20.14\%$) without causing harm, though it fails to close the gap to LoRA ($14.60\%$).
-   - On **KIT NMC** (steeper, non-linear degradation), forward-only DFA adaptation is actively harmful. HALO CV's performance degrades far below no-adapt ($59.90\%$ MAPE, $R^2 = -1.87$), while backpropagation-based LoRA remains stable ($36.17\%$ MAPE, $R^2 = 0.54$). This shows that the forward-only approximation collapses under complex degradation regimes due to the inability to assign gradients through steep paths.
-2. **Honest Metric Integrity (KIT NMC MAPE Inflation)**:
+1. **The Adaptability Ceiling on OOD Shift (The $R^2$ Reality)**:
+   In this benchmark, the **base model (No Adapt)** is a **frozen random INT4 network with a low-rank adapter pre-trained offline on Batch 1 & 2**. This is a highly constrained, memory-saving architecture designed for microcontroller BMS, not an offline optimal predictor.
+   - On the **Severson Cohort OOD Shift (Batch 3)**, this rigid base model is structurally weak, yielding a negative base $R^2$ of $-0.50 \pm 0.53$ (Median $-0.39$), meaning its zero-adaptation predictions perform worse than predicting the evaluation mean. 
+   - **LoRA** successfully stabilizes transfer, lifting the $R^2$ to $+0.27 \pm 0.37$ (Median $+0.38$), whereas forward-only **HALO CV** remains negative at $-0.39 \pm 0.95$ (Median $-0.10$). Thus, for OOD cohort shift, LoRA is the only method that consistently achieves positive transfer, while HALO CV fails to escape the negative $R^2$ regime.
+   - On the **KIT NMC Instance Split (Option C)**, the domain shift is milder (same testing conditions, different cell instances). Hence, the base model transfers with a positive $R^2$ of $0.55$. LoRA improves the median $R^2$ to $0.63$, whereas HALO CV experiences a catastrophic collapse on specific seeds ($R^2 = -1.87 \pm 8.79$, though the median is positive at $0.30$).
+
+2. **Sanity Check vs. Adaptation Benchmark**:
+   - The offline feature sanity check (which reports $R^2 \approx 0.70\text{--}0.90$ across datasets) was evaluated using a **fully-trained, unconstrained model** on the extracted features. This proved that the features contain a strong degradation signal.
+   - The adaptation benchmark evaluates the **hardware-constrained random-base adapter setup**. The lower/negative $R^2$ scores indicate the structural cost of frozen random INT4 projection under OOD domain shifts, not a failure of the feature pipeline itself.
+
+3. **Catastrophic Collapse of Forward-Only DFA (Medians vs. Means)**:
+   The huge variance for HALO CV on KIT NMC ($R^2$ std of $\pm 8.79$, MAPE std of $\pm 25.31\%$) is driven by severe failures on specific seeds, where the gradient-free Direct Feedback Alignment update rule explodes. Reporting the median shows that HALO CV is typically moderately positive (Median $R^2 = 0.30$), but its worst-case behavior is highly volatile, unlike LoRA which degrades gracefully.
+
+4. **Honest Metric Integrity (KIT NMC MAPE Inflation)**:
    The absolute MAPE is elevated on KIT NMC for all models (including Base and LoRA). This is not a feature pipeline or model failure, but a mathematical consequence of small cycle-life denominators (NMC cells degrade fast, with lifetimes of $10\text{--}20$ cycles, where a 3-cycle error represents a $20\text{--}30\%$ MAPE). This is verified by:
    - **Zero Correlation**: The cell lifetime $\leftrightarrow$ absolute error correlation is $-0.0290$ (practically zero).
    - **Temperature Group Analysis**: $0^\circ\text{C}$ cells, which have the shortest lifetimes, show the *lowest* average MAPE ($18.55\%$), contradicting any pipeline bug.
