@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """
-VolMax HALO — Rigorous On-Device BMS Adaptation Benchmark (Severson cycle-life)
-=============================================================================
-Provides a statistically rigorous validation of HALO vs LoRA under OOD shift:
+VolMax HALO — Rigorous On-Device BMS Adaptation Benchmark (KIT NMC SOH)
+======================================================================
+Runs the identical validation protocol as Severson on the KIT dataset:
   - 20 seeds (0-19) for variance control.
   - Reports MAPE, RMSE (cycles), and R2.
 """
 import numpy as np
+import pandas as pd
 import json
 import os
 import scipy.stats as stats
 from multiprocessing import Pool
-from bess_soh_halo_adaptation import (load_data, fq, embed, make_stack,
+from bess_soh_halo_adaptation import (fq, embed, make_stack,
     backprop_adapt, halo_adapt, predict)
 
 GRID = [(lam, lr) for lam in (0.03, 0.1, 0.3) for lr in (0.03, 0.1)]
 HALO_STEPS = 1200
 FACTORY_STEPS = 4000
 DEVICE_STEPS = 600
+
+FEATURE_FILE = "/home/volmax-studio/volmax-projects/iot2/PORTFOLIO/VolMax_HALO_Optimizer/kit_features.csv"
 
 def get_rmse(pred, true):
     return float(np.sqrt(np.mean((pred - true)**2)))
@@ -33,19 +36,34 @@ def decode_prediction(pred_std, y_mu, y_sd):
     pred_log = pred_std.reshape(-1) * y_sd + y_mu
     return 10**pred_log
 
-def prep_rigorous(seed, r, L=4, H=64):
+def load_kit_data():
+    df = pd.read_csv(FEATURE_FILE)
+    feat_cols = ["cap_initial", "cap_diff", "cap_slope", "temp_avg", "temp_slope", "r0_initial", "r0_diff", "r0_slope"]
+    X = df[feat_cols].values
+    y = df["target_cycle_life"].values
+    instance = df["instance"].values
+    return X, y, instance
+
+def prep_rigorous_kit(seed, r, L=4, H=64):
     rng = np.random.RandomState(seed)
-    X, y, batch, cell, _ = load_data()
-    tr = np.isin(batch, ["b1", "b2"]); b3 = batch == "b3"
+    X, y, instance = load_kit_data()
+    
+    # Train is instance 1 & 2; OOD (Test) is instance 3
+    tr = np.isin(instance, [1, 2])
+    te = instance == 3
+    
+    # Scaler fit only on Train
     mu, sd = X[tr].mean(0), X[tr].std(0) + 1e-8
     Xz = (X - mu) / sd
-    ylog = np.log10(y); ymu, ysd = ylog[tr].mean(), ylog[tr].std() + 1e-8
+    
+    ylog = np.log10(y)
+    ymu, ysd = ylog[tr].mean(), ylog[tr].std() + 1e-8
     yz = (ylog - ymu) / ysd
     
-    # Deterministic disjoint b3 splits (20 adapt, 20 eval)
-    b3idx = np.where(b3)[0]
-    rng.shuffle(b3idx)
-    ad_idx, ev_idx = b3idx[:20], b3idx[20:]
+    # Deterministic OOD split (20 adapt, 28 eval from the 48 instance 3 cells)
+    te_idx = np.where(te)[0]
+    rng.shuffle(te_idx)
+    ad_idx, ev_idx = te_idx[:20], te_idx[20:]
     
     d = Xz.shape[1]
     Win = fq(rng.randn(d, H) * (1 / np.sqrt(d)))
@@ -64,17 +82,17 @@ def prep_rigorous(seed, r, L=4, H=64):
     V0 = [rng.randn(r, H) * 0.05 for _ in range(L)]
     Wout0 = rng.randn(H, 1) * (1 / np.sqrt(H))
     
-    # Factory offline pre-training
+    # Factory pre-training on Train instances
     A, B, Wo, _ = backprop_adapt(e_tr, y_tr, layers, U0, V0, Wout0, H, r, FACTORY_STEPS, lr=0.05)
     
     return {
         "layers": layers, "H": H, "r": r, "L": L,
         "e_ad": e_ad, "y_ad": y_ad, "e_ev": e_ev, "yev_cyc": yev_cyc,
         "A": A, "B": B, "Wo": Wo, "ymu": ymu, "ysd": ysd,
-        "rng": rng, "ad_idx": ad_idx, "y": y, "batch": batch
+        "rng": rng, "ad_idx": ad_idx, "y": y
     }
 
-def cv_select_rigorous(P, n_adapt):
+def cv_select_rigorous_kit(P, n_adapt):
     e_ad_sub = P["e_ad"][:n_adapt]
     y_ad_sub = P["y_ad"][:n_adapt]
     
@@ -149,7 +167,7 @@ def run_seed_task(args):
     r2_lora = get_r2(cyc_lora, y_true)
     
     # 3. HALO CV
-    lam_cv, lr_cv = cv_select_rigorous(P, na)
+    lam_cv, lr_cv = cv_select_rigorous_kit(P, na)
     U_cv, V_cv, Wo_cv, _ = halo_adapt(
         P["e_ad"][:na], P["y_ad"][:na], P["layers"],
         P["A"], P["B"], P["Wo"], P["H"], P["r"],
@@ -192,7 +210,7 @@ def run_seed_task(args):
 def run_prep_task(args):
     seed, r = args
     np.random.seed(seed)
-    return seed, r, prep_rigorous(seed, r)
+    return seed, r, prep_rigorous_kit(seed, r)
 
 if __name__ == "__main__":
     SEEDS = list(range(20))
@@ -200,9 +218,10 @@ if __name__ == "__main__":
     N_ADAPTS = [5, 10, 15, 20]
     
     print("=" * 85)
-    print("VolMax HALO — Rigorous On-Device BMS Adaptation Benchmark (Severson cycle-life)")
+    print("VolMax HALO — Rigorous On-Device BMS Adaptation Benchmark (KIT NMC SOH, Option C)")
     print(f"  Seeds: 0-19 ({len(SEEDS)} runs) | Ranks: {RANKS}")
     print("  ORACLE = best-on-eval | CV = honest 5-fold / LOO selection")
+    print("  Split: Instance split (Instances 1 & 2 Train -> Instance 3 OOD)")
     print("=" * 85)
     
     print("Pre-training base models across all seeds and ranks in parallel...")
@@ -278,9 +297,10 @@ if __name__ == "__main__":
                 "gap_mean": float(np.mean(diffs))
             }
             
+    output_json = "/home/volmax-studio/volmax-projects/iot2/PORTFOLIO/VolMax_HALO_Optimizer/kit_verified_results.json"
     try:
-        with open("verified_results.json", "w") as f:
+        with open(output_json, "w") as f:
             json.dump(out, f, indent=2)
-        print("\n[OK] Rigorous results written to verified_results.json")
+        print(f"\n[OK] Rigorous results written to {output_json}")
     except Exception as e:
         print(f"\n[Error] Writing results failed: {e}")

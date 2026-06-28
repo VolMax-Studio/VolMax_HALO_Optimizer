@@ -5,3 +5,7 @@ __pycache__/
 # Local data and output
 data/
 verified_results.json
+kit_features.csv
+kit_verified_results.json
+kit_result_data/
+scratch/
