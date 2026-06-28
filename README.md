@@ -151,7 +151,7 @@ We perform a statistically rigorous evaluation across **20 random seeds (0–19)
 1. **The Adaptability Ceiling on OOD Shift (The $R^2$ Reality)**:
    In this benchmark, the **base model (No Adapt)** is a **frozen random INT4 network with a low-rank adapter pre-trained offline on Batch 1 & 2**. This is a highly constrained, memory-saving architecture designed for microcontroller BMS, not an offline optimal predictor.
    - On the **Severson Cohort OOD Shift (Batch 3)**, this rigid base model is structurally weak, yielding a negative base $R^2$ of $-0.50 \pm 0.53$ (Median $-0.39$), meaning its zero-adaptation predictions perform worse than predicting the evaluation mean. 
-   - **LoRA** successfully stabilizes transfer, lifting the $R^2$ to $+0.27 \pm 0.37$ (Median $+0.38$), whereas forward-only **HALO CV** remains negative at $-0.39 \pm 0.95$ (Median $-0.10$). Thus, for OOD cohort shift, LoRA is the only method that consistently achieves positive transfer, while HALO CV fails to escape the negative $R^2$ regime.
+   - **LoRA** is the only method reaching a positive median $R^2$ ($0.38$), though transfer remains weak for all methods under this OOD cohort shift; no method achieves reliable transfer. Forward-only **HALO CV** remains negative on average at $-0.39 \pm 0.95$ (Median $-0.10$). Thus, for OOD cohort shift, HALO CV fails to escape the negative $R^2$ regime.
    - On the **KIT NMC Instance Split (Option C)**, the domain shift is milder (same testing conditions, different cell instances). Hence, the base model transfers with a positive $R^2$ of $0.55$. LoRA improves the median $R^2$ to $0.63$, whereas HALO CV experiences a catastrophic collapse on specific seeds ($R^2 = -1.87 \pm 8.79$, though the median is positive at $0.30$).
 
 2. **Sanity Check vs. Adaptation Benchmark**:
@@ -159,7 +159,7 @@ We perform a statistically rigorous evaluation across **20 random seeds (0–19)
    - The adaptation benchmark evaluates the **hardware-constrained random-base adapter setup**. The lower/negative $R^2$ scores indicate the structural cost of frozen random INT4 projection under OOD domain shifts, not a failure of the feature pipeline itself.
 
 3. **Catastrophic Collapse of Forward-Only DFA (Medians vs. Means)**:
-   The huge variance for HALO CV on KIT NMC ($R^2$ std of $\pm 8.79$, MAPE std of $\pm 25.31\%$) is driven by severe failures on specific seeds, where the gradient-free Direct Feedback Alignment update rule explodes. Reporting the median shows that HALO CV is typically moderately positive (Median $R^2 = 0.30$), but its worst-case behavior is highly volatile, unlike LoRA which degrades gracefully.
+   The huge variance for HALO CV on KIT NMC ($R^2$ std of $\pm 8.79$, MAPE std of $\pm 25.31\%$) is driven by severe failures on specific seeds, where the gradient-free Direct Feedback Alignment update rule explodes. The positive median ($0.30$) masks a disqualifying tail: forward-only DFA collapses catastrophically on a subset of seeds ($R^2$ down to large-negative, std $\pm 8.79$). For on-device deployment this tail risk is the finding — median stability is not sufficient when worst-case behavior is unbounded.
 
 4. **Honest Metric Integrity (KIT NMC MAPE Inflation)**:
    The absolute MAPE is elevated on KIT NMC for all models (including Base and LoRA). This is not a feature pipeline or model failure, but a mathematical consequence of small cycle-life denominators (NMC cells degrade fast, with lifetimes of $10\text{--}20$ cycles, where a 3-cycle error represents a $20\text{--}30\%$ MAPE). This is verified by:
