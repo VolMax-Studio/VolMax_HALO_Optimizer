@@ -3,7 +3,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21010289.svg)](https://doi.org/10.5281/zenodo.21010289)
 
 > [!NOTE]
-> **Project Status (2026-07-24):** Research line CLOSED. Key mechanisms (Forward-only credit assignment, stochastic orthogonal updates, low-rank adapters) are covered by existing prior art (XCS, EDA-GP, STN) and failed on attention credit assignment. Retained transparently as a process record.
+> **Project Status:** Published Proof-of-Concept & Benchmark (Zenodo DOI: [10.5281/zenodo.21010289](https://doi.org/10.5281/zenodo.21010289)). Evaluates gradient-free local adaptation for frozen INT4 networks and on-device BMS SOH regression. Documented boundaries: feedforward layers only (fails on attention Q/K/V credit assignment). A separate symbolic-regression application attempt (HALO-SR) was evaluated and closed separately.
 
 A reproducible benchmark of **gradient-free, backprop-free local adaptation** of a frozen
 INT4-quantized network, measured head-to-head against LoRA. The adaptation runs entirely
